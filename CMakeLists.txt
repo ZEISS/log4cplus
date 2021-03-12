@@ -12,7 +12,7 @@ endif ()
 set (CMAKE_LEGACY_CYGWIN_WIN32 0)
 
 project (log4cplus)
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.12)
 
 # Use "-fPIC" / "-fPIE" for all targets by default, including static libs.
 set (CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -36,6 +36,10 @@ log4cplus_get_version ("${PROJECT_SOURCE_DIR}/include"
 message("-- Generating build for Log4cplus version ${log4cplus_version_major}.${log4cplus_version_minor}.${log4cplus_version_patch}")
 set (log4cplus_soversion 0)
 set (log4cplus_postfix "")
+if (APPLE)
+  set (log4cplus_macho_current_version 7.0.0)
+  set (log4cplus_macho_compatibility_version 3.0.0)
+endif ()
 
 option(LOG4CPLUS_BUILD_TESTING "Build the test suite." ON)
 option(LOG4CPLUS_BUILD_LOGGINGSERVER "Build the logging server." ON)
@@ -44,6 +48,11 @@ option(LOG4CPLUS_REQUIRE_EXPLICIT_INITIALIZATION "Require explicit initializatio
 if (LOG4CPLUS_REQUIRE_EXPLICIT_INITIALIZATION)
   add_compile_definitions (LOG4CPLUS_REQUIRE_EXPLICIT_INITIALIZATION=1)
 endif(LOG4CPLUS_REQUIRE_EXPLICIT_INITIALIZATION)
+
+option(LOG4CPLUS_ENABLE_THREAD_POOL "Instantiate internal thread pool for when AsyncAppend=true" ON)
+if (LOG4CPLUS_ENABLE_THREAD_POOL)
+add_compile_definitions (LOG4CPLUS_ENABLE_THREAD_POOL=1)
+endif()
 
 if(NOT LOG4CPLUS_SINGLE_THREADED)
   find_package (Threads)
@@ -190,6 +199,21 @@ if (LOG4CPLUS_QT5)
 endif (LOG4CPLUS_QT5)
 
 include(Log4CPlusCPack.cmake)
+
+# generate pkgconfig file.
+set (log4cplus_pkgconfig "${CMAKE_BINARY_DIR}/lib/pkgconfig/log4cplus.pc")
+function(log4cplus_gen_pkgconfig)
+  message (STATUS "Generating ${log4cplus_pkgconfig}")
+  set(prefix "${CMAKE_INSTALL_PREFIX}")
+  set(exec_prefix "\${prefix}")
+  set(libdir "\${prefix}/${CMAKE_INSTALL_LIBDIR}")
+  set(includedir "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
+  set(VERSION "${log4cplus_version_major}.${log4cplus_version_minor}.${log4cplus_version_patch}")
+  configure_file(log4cplus.pc.in "${log4cplus_pkgconfig}" @ONLY)
+endfunction(log4cplus_gen_pkgconfig)
+log4cplus_gen_pkgconfig ()
+
+install(FILES "${log4cplus_pkgconfig}" DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig/)
 
 message (STATUS "Compiler: ${CMAKE_CXX_COMPILER}")
 message (STATUS "${CMAKE_CXX_COMPILER_ID} version ${CMAKE_CXX_COMPILER_VERSION}")
